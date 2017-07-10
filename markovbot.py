@@ -79,16 +79,23 @@ if config['IRC']['server'] == "??":
 	print (">> Exiting...")
 	exit()
 
-configuration = {
+def str_to_bool(str):
+	if str == "True":
+		return True
+	elif str == "False":
+		return False
+	raise ValueError("Cannot convert to bool: string is not \"True\" or \"False\".")
+
+configuration = {  # TODO bomb on bad values, do some input validation
 	'irc_server': str(config['IRC']['server']),
 	'port': int(config['IRC']['port']),
-	'use_ssl': bool(config['IRC']['use_ssl']),
+	'use_ssl': str_to_bool(config['IRC']['use_ssl']),
 	'nickname': str(config['IRC']['nickname']),
 	'altnick': str(config['IRC']['altnick']),
 	'realname': str(config['IRC']['realname']),
 	'username': str(config['IRC']['username']),
 	'password': str(config['IRC']['password']),
-	'reply_to_private': bool(config['IRC']['reply_to_private']),
+	'reply_to_private': str_to_bool(config['IRC']['reply_to_private']),
 	'chain_length': int(config['MARKOV']['chain_length']), # 2 seems to give the right kind of markov weirdness without making too little sense
 	'chattiness': float(config['MARKOV']['chattiness']), # how often the bot should randomly speak when others speak, 0 - 1
 	'banned_words': []
@@ -98,7 +105,6 @@ configuration = {
 for word in config['MARKOV']['do_not_record']:
 	configuration['banned_words'].append(word)
 
-
 class Channel():
 	can_speak = False
 	chattiness = configuration['chattiness']
@@ -107,7 +113,7 @@ class Channel():
 	
 	def __init__(self, section, section_name):
 		if 'can_speak' in section:
-			self.can_speak = bool(section['can_speak'])
+			self.can_speak = str_to_bool(section['can_speak'])
 
 		if 'chattiness' in section:
 			self.chattiness = float(section['chattiness'])
@@ -130,7 +136,7 @@ class Channel():
 # get all the channels
 channels = []
 for section in config.sections():
-	if section.startswith("CHANNEL"):
+	if section.startswith("CHANNEL"): # TODO enforce channel number suffixes... or not, it may not ever matter. maybe "CHANNEL <whatever the user desires>" is a good thing?
 		channels.append(Channel(config[section], section))
 
 markov = defaultdict(list)
