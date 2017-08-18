@@ -4,10 +4,28 @@ import sqlite3
 
 
 def create_tables(connection):
+	## Database metadata table
+	# This table is meant to store at least one row of any number of columns
+	# There is no guarantee the data will be in a sane or consistent state, but the program
+	# itself should not be the cause of this.
 	connection.execute("CREATE TABLE db (version INTEGER NOT NULL)")
+
+	## Recorded messages
+	# What the markov chain algorithm uses to create its chains.
+	# Should not store duplicates, but keep a log of how often it has seen a message
 	connection.execute("CREATE TABLE messages (message TEXT NOT NULL, seen INTEGER)")
+
+	## Recorded responses
+	# Contains generated chains the markov bot has spoken, and what the original message was in response to
 	connection.execute("CREATE TABLE responses (message_id REFERENCES messages(rowid), response TEXT NOT NULL, seen INTEGER)")
-	connection.execute("CREATE TABLE response_votes (response_id REFERENCES responses(rowid), user TEXT UNIQUE NOT NULL, vote INTEGER)")
+
+	## User voting on recorded responses
+	# TODO
+	connection.execute("CREATE TABLE response_votes (response_id REFERENCES responses(rowid), user TEXT UNIQUE NOT NULL, tally INTEGER)")
+	connection.commit()
+
+def set_version(connection, version):
+	connection.execute("INSERT INTO db (?)", version)
 	connection.commit()
 
 
@@ -24,7 +42,23 @@ def add_message(connection, message):
 	else:
 		# Add a new message
 		connection.execute("INSERT INTO messages (?, ?)", [(message, 0)])
+	connection.commit()
+
 	
+def get_messages(connection, word):
+	'''
+	Get all messages containing a word.
+	'''
+	cursor = connection.execute("SELECT message FROM messages WHERE message LIKE ?", word)
+	
+	# make an easier to use list from the cursor
+	row = cursor.fetchone()
+	messages = []
+	while row != None:
+		messages.append(row[0])
+
+	return messages
+
 	
 def add_response(connection, message, response):
 	'''
@@ -36,9 +70,10 @@ def add_response(connection, message, response):
 		cursor2 = connection.execute("SELECT rowid, seen FROM responses WHERE response = ?", response)
 		if cursor2.rowcount > 0:
 			row2 = cursor.fetchone()
-			connection.execute("UPDATE responses SET seen = ? WHERE 
+			connection.execute("UPDATE responses SET seen = ? WHERE ", row2[1] + 1)
 		else:
-			connection.execute("INSERT INTO responses (?, ?, ?)")
+			connection.execute("INSERT INTO responses (?, ?, ?)", row[0], response, 0)
+	connection.commit()
 
 
 if __name__ == "__main__":
